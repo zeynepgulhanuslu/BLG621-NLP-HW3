@@ -148,7 +148,7 @@ def train_model(train_iterator, valid_iterator, input_vocab, output_vocab, model
     dec = Decoder(OUTPUT_DIM, DEC_EMB_DIM, HID_DIM, N_LAYERS, DEC_DROPOUT)
 
     model = Seq2Seq(enc, dec, device).to(device)
-    optimizer = optim.Adam(model.parameters())
+    optimizer = optim.Adam(model.parameters(), lr=3e-4)
     TRG_PAD_IDX = output_vocab.index('_')
     criterion = nn.CrossEntropyLoss(ignore_index=TRG_PAD_IDX)
 
