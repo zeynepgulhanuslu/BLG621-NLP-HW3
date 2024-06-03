@@ -1,0 +1,12 @@
+dnn verisi context size verilerek önceki ve sonraki karakterler alınarak hazırlanmıştır.
+{'input': ['d', 'e', 'ğ', 'i', 's', 't', 'i'], 'ref': 'i'}
+
+dnn binary verisi:
+
+{'input': ['d', 'e', 'ğ', 'i', 's', 't', 'i'], 'label': '_', 'ref': 'i'}
+
+seq2seq binary verisi:
+
+input: oldugun gıbı gorun
+target: ____*____*_*__*_*_
+result: olduğun gibi görün
