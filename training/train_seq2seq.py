@@ -102,7 +102,7 @@ def apply_diacritics(sentence, labels):
     return ''.join(transformed_sentence)
 
 
-def get_dnn_test_accuracy(model, test_input_f, test_target_f, context_size):
+def get_seq2seq_test_accuracy(model, test_input_f, test_target_f, context_size):
     f_i = open(test_input_f, 'r', encoding='utf-8')
     f_t = open(test_target_f, 'r', encoding='utf-8')
     test_input_sentences = f_i.readlines()

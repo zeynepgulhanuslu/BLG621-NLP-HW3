@@ -91,3 +91,20 @@ def prepare_seq2seq_dataset(input_file, target_file):
     target_indices = [[output_vocab.index(char) for char in seq] for seq in target_sequences]
 
     return Seq2SeqDataset(input_indices, target_indices, original_sequences)
+
+
+# Örnek çalıştırma
+source_dir = '../source/all-train-data-v1'
+train_input_f = os.path.join(source_dir, 'train-input.txt')
+train_target_f = os.path.join(source_dir, 'train-target.txt')
+test_input_f = os.path.join(source_dir, 'test-input.txt')
+test_target_f = os.path.join(source_dir, 'test-target.txt')
+out_dir = '../source/all-train-data-seq2seq'
+os.makedirs(out_dir, exist_ok=True)
+
+train_dataset = prepare_seq2seq_dataset(train_input_f, train_target_f)
+print(train_dataset.input_sequences[0])
+print(train_dataset.target_sequences[0])
+print(train_dataset.original_sequences[0])
+
+

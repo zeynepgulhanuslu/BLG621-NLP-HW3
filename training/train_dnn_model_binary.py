@@ -119,7 +119,6 @@ def get_vector_as_tensor(i, sentence, context_size):
 
     return input_tensor
 
-
 def dnn_binary_infer(model, input_sentence, context_size):
     model.eval()
     input_sentence = list(input_sentence)
@@ -128,7 +127,7 @@ def dnn_binary_infer(model, input_sentence, context_size):
     with torch.no_grad():
         for i, char in enumerate(input_sentence):
             if char in chars_that_can_have_diacritics:
-                input_tensor = get_vector_as_tensor(i + context_size, input_sentence, context_size)
+                input_tensor = get_vector_as_tensor(i, input_sentence, context_size)
                 output = model(input_tensor)
                 _, predicted_idx = torch.max(output, 1)
                 predicted_label = output_vocab[predicted_idx.item()]

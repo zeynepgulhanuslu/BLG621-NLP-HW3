@@ -8,11 +8,9 @@ import torch.nn as nn
 import torch.optim as optim
 from Levenshtein import distance as levenshtein_distance
 from torch.utils.data import Dataset, DataLoader
-from torch.utils.tensorboard import SummaryWriter
 
 from data.dnn_data import prepare_dataset_with_pairs, is_ambiguous
 
-writer = SummaryWriter("dnn_training_v1")
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 chars_that_can_have_diacritics = set('cCiIsSoOuUgG')
@@ -38,7 +36,8 @@ class FeedForwardNN(nn.Module):
 
     def forward(self, x):
         for layer in self.layers:
-            x = torch.relu(layer(x))
+            #x = torch.relu(layer(x))
+            x = torch.tanh(layer(x))
             x = self.dropout(x)
         output = self.output_layer(x)
         return output
@@ -80,7 +79,6 @@ def train_dnn_model(model, dataloader, criterion, optimizer, num_epochs, model_f
             optimizer.zero_grad()
             outputs = model(inputs)
             loss = criterion(outputs, targets)
-            writer.add_scalar("Loss/train", loss, epoch)
             loss.backward()
             optimizer.step()
             total_loss += loss.item()
@@ -181,9 +179,6 @@ def get_dnn_test_accuracy(model, test_input_f, test_target_f):
     accuracy = 1 - total_distance / total_chars
     word_accuracy = total_correct_words / total_words * 100
     amb_accuracy = total_correct_amb / total_amb * 100
-    writer.add_scalar('Character-level accuracy (Lev-Distance)', accuracy)
-    writer.add_scalar('Word-level accuracy', word_accuracy)
-    writer.add_scalar('Ambiguous accuracy', amb_accuracy)
     print(f'Character-level accuracy: %{accuracy * 100:.2f}')
     print(f'Word-level accuracy: %{word_accuracy:.2f}')
     print(f'Ambiguous accuracy: %{amb_accuracy:.2f}')
