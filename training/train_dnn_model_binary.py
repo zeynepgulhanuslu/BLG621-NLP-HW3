@@ -1,5 +1,6 @@
 import argparse
 import os
+from itertools import repeat
 
 import numpy as np
 import torch
@@ -9,7 +10,7 @@ from torch.utils.data import Dataset, DataLoader
 
 from data.dnn_binary_data import prepare_binary_dataset
 from data.dnn_data import is_ambiguous
-from training.train_dnn_model import get_vector_as_tensor
+from training.train_dnn_model import get_vector_as_tensor, input_vocab_dict
 from Levenshtein import distance as levenshtein_distance
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -25,7 +26,7 @@ input_vocab = [start_symbol] + list(
 # * -> değiştirilecek karakterler için
 # _ -> değiştirilmeyecek karakterler için
 output_vocab = ['*', '_']
-chars_that_can_have_diacritics = set(diacritic_mapping.keys())
+chars_that_can_have_diacritics = set('cCiIsSoOuUgG')
 
 
 class DiacriticsBinaryDataset(Dataset):
@@ -92,18 +93,31 @@ def train_dnn_model_binary(model, dataloader, criterion, optimizer, num_epochs, 
     torch.save(model.state_dict(), model_file)
 
 
-def get_vector_as_tensor(index, input_sentence, context_size):
-    start_padding = [start_symbol] * context_size
-    end_padding = [end_symbol] * context_size
-    padded_sentence = start_padding + input_sentence + end_padding
-
-    context_window = padded_sentence[index: index + 2 * context_size + 1]
-    input_indices = [input_vocab.index(char) for char in context_window]
-    input_one_hot = np.zeros((len(context_window), len(input_vocab)), dtype=np.float32)
+def get_vector_as_tensor(i, sentence, context_size):
+    input_symbols: list[str] = []
+    start = i - context_size
+    end = i + context_size + 1
+    if start < 0:
+        input_symbols.extend(repeat(start_symbol, context_size - i))
+        input_symbols.extend(sentence[0:i])
+    else:
+        input_symbols.extend(sentence[start:i])
+    if end > len(sentence):
+        input_symbols.extend(sentence[i:len(sentence)])
+        input_symbols.extend(repeat(end_symbol, end - len(sentence)))
+    else:
+        input_symbols.extend(sentence[i:end])
+    input_indices = [input_vocab_dict[symbol] for symbol in input_symbols]
+    input_one_hot = np.zeros((len(input_symbols), len(input_vocab)), dtype=np.float32)
     for i, idx in enumerate(input_indices):
         input_one_hot[i, idx] = 1.0
 
-    return torch.tensor(input_one_hot, dtype=torch.float32).to(device).view(-1)
+    input_one_hot = torch.tensor(input_one_hot, dtype=torch.float32)
+
+    input_tensor = torch.tensor(input_one_hot, dtype=torch.float32).unsqueeze(0).to(device)
+    input_tensor = input_tensor.view(input_tensor.size(0), -1)  # Reshape and convert to float
+
+    return input_tensor
 
 
 def dnn_binary_infer(model, input_sentence, context_size):
@@ -115,8 +129,6 @@ def dnn_binary_infer(model, input_sentence, context_size):
         for i, char in enumerate(input_sentence):
             if char in chars_that_can_have_diacritics:
                 input_tensor = get_vector_as_tensor(i + context_size, input_sentence, context_size)
-                input_tensor = input_tensor.view(1, -1)  # Add batch dimension
-
                 output = model(input_tensor)
                 _, predicted_idx = torch.max(output, 1)
                 predicted_label = output_vocab[predicted_idx.item()]
@@ -138,7 +150,6 @@ def get_dnn_test_accuracy(model, test_input_f, test_target_f, context_size):
     test_input_sentences = f_i.readlines()
     test_target_sentences = f_t.readlines()
 
-    total_amb = 0
     total_correct_amb = 0
     total_distance = 0
     total_chars = 0
@@ -165,7 +176,6 @@ def get_dnn_test_accuracy(model, test_input_f, test_target_f, context_size):
 
         for input_word, target_word, decoded_word in zip(input_words, target_words, decoded_words):
             if is_ambiguous(target_word):
-                total_amb += 1
                 total_amb_words += 1
             if target_word == decoded_word:
                 if is_ambiguous(target_word):
@@ -175,7 +185,7 @@ def get_dnn_test_accuracy(model, test_input_f, test_target_f, context_size):
 
     accuracy = 1 - total_distance / total_chars
     word_accuracy = total_correct_words / total_words * 100
-    amb_accuracy = total_correct_amb / total_amb * 100
+    amb_accuracy = total_correct_amb / total_amb_words * 100
     print(f'Character-level accuracy: %{accuracy * 100:.2f}')
     print(f'Word-level accuracy: %{word_accuracy:.2f}')
     print(f'Ambiguous accuracy: %{amb_accuracy:.2f}')
@@ -233,7 +243,7 @@ if __name__ == '__main__':
     train_dataset = DiacriticsBinaryDataset(train_pairs, input_vocab, output_vocab)
     train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
 
-    input_dim = len(input_vocab) * (2 * context_size + 1)  # Adjusted for the context window
+    input_dim = len(input_vocab) * (2 * context_size + 1)
     output_dim = len(output_vocab)
     dropout_prob = 0.5  #
 
@@ -248,6 +258,7 @@ if __name__ == '__main__':
     train_dnn_model_binary(model, train_dataloader, criterion, optimizer, num_epochs, model_file)
     # get test result
 
-    results, accuracy, word_accuracy, amb_accuracy = get_dnn_test_accuracy(model, test_input_f, test_target_f)
+    results, accuracy, word_accuracy, amb_accuracy = get_dnn_test_accuracy(model, test_input_f, test_target_f,
+                                                                           context_size)
     if result_file is not None:
         write_results_to_file(results, accuracy, word_accuracy, amb_accuracy, result_file)

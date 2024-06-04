@@ -211,7 +211,6 @@ if __name__ == '__main__':
                         help="Result file for test set results")
 
     args = parser.parse_args()
-
     source_dir = args.data_dir
     context_size = args.context_size
     hidden_dim = args.hidden_dim

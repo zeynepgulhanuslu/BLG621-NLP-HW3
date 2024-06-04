@@ -53,12 +53,3 @@ def prepare_binary_dataset(input_file, target_file, context_size=3):
     target_sentences = f_t.readlines()
     return prepare_set(input_sentences, target_sentences, context_size)
 
-
-source_dir = '../source/all-train-data-v1'
-train_input_f = os.path.join(source_dir, 'train-input.txt')
-train_target_f = os.path.join(source_dir, 'train-target.txt')
-
-training_elements = prepare_binary_dataset(train_input_f, train_target_f, context_size=3)
-for t in training_elements:
-    print(t)
-
