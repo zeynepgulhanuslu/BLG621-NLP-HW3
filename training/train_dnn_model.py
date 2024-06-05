@@ -36,8 +36,7 @@ class FeedForwardNN(nn.Module):
 
     def forward(self, x):
         for layer in self.layers:
-            #x = torch.relu(layer(x))
-            x = torch.tanh(layer(x))
+            x = torch.relu(layer(x))
             x = self.dropout(x)
         output = self.output_layer(x)
         return output

@@ -53,3 +53,10 @@ def prepare_binary_dataset(input_file, target_file, context_size=3):
     target_sentences = f_t.readlines()
     return prepare_set(input_sentences, target_sentences, context_size)
 
+
+result = prepare_set(['kisa siir oku', 'sevdigim uzakta'],
+                     ['kısa şiir oku', 'sevdiğim uzakta'],
+                     3)
+
+for r in result:
+    print(f'{r["input"]} -> {r["label"]} -> {r["ref"]}')

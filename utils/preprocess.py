@@ -86,5 +86,5 @@ def clean_file(input_file, output_file, removed_file):
 # here only we removed unwanted character lines.
 file_path = '../source/original-data/testkumesi-gs.txt'
 clean_file_path = '../source/original-data/testkumesi-gs-norm.txt'
-removed_f = '../source/original-data/test-removed.txt'
+removed_f = '../source/original-data/train-removed.txt'
 clean_file(file_path, clean_file_path, removed_f)

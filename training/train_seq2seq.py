@@ -34,22 +34,22 @@ class Seq2SeqLSTM(nn.Module):
         self.fc = nn.Linear(hidden_size, output_vocab_size)
         self.softmax = nn.LogSoftmax(dim=2)
 
-    def forward(self, x, targets=None, teacher_forcing_ratio=0.5):
+    def forward(self, x, targets=None):
         embedded = self.embedding(x)
         encoder_outputs, (hidden, cell) = self.encoder(embedded)
 
         decoder_input = torch.zeros(x.size(0), 1, dtype=torch.long, device=x.device)
         outputs = []
 
-        for t in range(targets.size(1)):
+        for t in range(x.size(1)):
             decoder_input_embedded = self.embedding(decoder_input)
             decoder_output, (hidden, cell) = self.decoder(decoder_input_embedded, (hidden, cell))
             output = self.fc(decoder_output)
             output = self.softmax(output)
             outputs.append(output)
 
-            if targets is not None and torch.rand(1).item() < teacher_forcing_ratio:
-                decoder_input = targets[:, t].unsqueeze(1)
+            if targets is not None:
+                decoder_input = targets[:, t].unsqueeze(1)  # Teacher forcing
             else:
                 decoder_input = output.argmax(2)
 
@@ -77,16 +77,40 @@ def train_seq2seq_model(model, dataloader, criterion, optimizer, num_epochs, dev
         print(f'Epoch [{epoch + 1}/{num_epochs}], Loss: {avg_loss:.4f}')
 
 
-def seq2seq_infer(model, sentence, device):
+def seq2seq_infer(model, sentence):
     model.eval()
+
     input_indices = [input_vocab.index(char) for char in sentence]
-    input_tensor = torch.tensor(input_indices, dtype=torch.long).unsqueeze(0).to(device)
+    max_input_len = max([len(seq) for seq in sentence])
+    padded_input = input_indices + [input_vocab.index(end_symbol)] * (max_input_len - len(input_indices))
+
+    # Padding ekle
+
+    input_tensor = torch.LongTensor(padded_input).unsqueeze(0).to(device)
 
     with torch.no_grad():
-        output = model(input_tensor, targets=None, teacher_forcing_ratio=0.0)
-        output = output.squeeze(0)
-        predicted_indices = output.argmax(1).tolist()
-        predicted_labels = [output_vocab[idx] for idx in predicted_indices]
+        embedding = model.embedding(input_tensor)
+        _, (encoder_hidden, encoder_cell) = model.encoder(embedding)
+
+        # Decoder için hidden ve cell durumlarını sıfırla
+        hidden = encoder_hidden
+        cell = encoder_cell
+        outputs = []
+        for t in range(len(sentence)):
+            decoder_input = torch.zeros(1, 1, dtype=torch.long, device=device)
+            decoder_input_embedded = model.embedding(decoder_input)
+            decoder_output, (hidden, cell) = model.decoder(decoder_input_embedded, (hidden, cell))
+            output = model.fc(decoder_output)
+            output = model.softmax(output)
+            topv, topi = output.topk(1)
+            # decoder_input = topi.squeeze().detach()
+
+            if topi.item() == input_vocab.index(end_symbol):
+                break
+
+            outputs.append(topi.item())
+
+        predicted_labels = [output_vocab[idx] for idx in outputs]
 
     return ''.join(predicted_labels)
 
@@ -102,7 +126,7 @@ def apply_diacritics(sentence, labels):
     return ''.join(transformed_sentence)
 
 
-def get_seq2seq_test_accuracy(model, test_input_f, test_target_f, context_size):
+def get_seq2seq_test_accuracy(model, test_input_f, test_target_f):
     f_i = open(test_input_f, 'r', encoding='utf-8')
     f_t = open(test_target_f, 'r', encoding='utf-8')
     test_input_sentences = f_i.readlines()
@@ -118,7 +142,7 @@ def get_seq2seq_test_accuracy(model, test_input_f, test_target_f, context_size):
     for input_sentence, target_sentence in zip(test_input_sentences, test_target_sentences):
         input_sentence = input_sentence.strip()
         target_sentence = target_sentence.strip()
-        transformed_sentence = seq2seq_infer(model, input_sentence, context_size).strip()
+        transformed_sentence = seq2seq_infer(model, input_sentence).strip()
         transformed_sentence_norm = apply_diacritics(input_sentence, transformed_sentence)
         lev_dist = levenshtein_distance(target_sentence, transformed_sentence_norm)
         total_distance += lev_dist
@@ -127,11 +151,11 @@ def get_seq2seq_test_accuracy(model, test_input_f, test_target_f, context_size):
         print(f'target: {target_sentence}')
         print(f'decoded: {transformed_sentence_norm.strip()}')
         print('---------------------')
-        results.append((input_sentence, target_sentence, transformed_sentence))
+        results.append((input_sentence, target_sentence, transformed_sentence_norm))
 
         input_words = input_sentence.split()
         target_words = target_sentence.split()
-        decoded_words = transformed_sentence.split()
+        decoded_words = transformed_sentence_norm.split()
 
         for input_word, target_word, decoded_word in zip(input_words, target_words, decoded_words):
             if is_ambiguous(target_word):

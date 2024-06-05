@@ -119,6 +119,7 @@ def get_vector_as_tensor(i, sentence, context_size):
 
     return input_tensor
 
+
 def dnn_binary_infer(model, input_sentence, context_size):
     model.eval()
     input_sentence = list(input_sentence)

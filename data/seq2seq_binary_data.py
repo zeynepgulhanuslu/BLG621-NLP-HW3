@@ -1,7 +1,7 @@
 import os
 
 import torch
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, DataLoader
 
 start_symbol = '<S>'
 end_symbol = '</S>'
@@ -92,19 +92,23 @@ def prepare_seq2seq_dataset(input_file, target_file):
 
     return Seq2SeqDataset(input_indices, target_indices, original_sequences)
 
-
+'''
 # Örnek çalıştırma
 source_dir = '../source/all-train-data-v1'
 train_input_f = os.path.join(source_dir, 'train-input.txt')
 train_target_f = os.path.join(source_dir, 'train-target.txt')
 test_input_f = os.path.join(source_dir, 'test-input.txt')
 test_target_f = os.path.join(source_dir, 'test-target.txt')
-out_dir = '../source/all-train-data-seq2seq'
-os.makedirs(out_dir, exist_ok=True)
 
 train_dataset = prepare_seq2seq_dataset(train_input_f, train_target_f)
 print(train_dataset.input_sequences[0])
 print(train_dataset.target_sequences[0])
 print(train_dataset.original_sequences[0])
+dataloader = DataLoader(train_dataset, batch_size=1, shuffle=True, collate_fn=seq2seq_collate_fn)
 
-
+for inputs, targets, orig in dataloader:
+    print(f'input:{inputs}')
+    print(f'targets:{targets}')
+    print(f'orig:{orig}')
+    
+'''
