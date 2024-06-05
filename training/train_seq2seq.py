@@ -238,3 +238,7 @@ if __name__ == '__main__':
     torch.save(model.state_dict(), model_file)
 
     model.eval()
+
+    results, accuracy, word_accuracy, amb_accuracy = get_seq2seq_test_accuracy(model, test_input_f, test_target_f)
+    if result_file is not None:
+        write_results_to_file(results, accuracy, word_accuracy, amb_accuracy, result_file)
